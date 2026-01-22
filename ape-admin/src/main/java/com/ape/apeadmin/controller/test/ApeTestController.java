@@ -177,7 +177,8 @@ public class ApeTestController {
         Integer pageSize = jsonObject.getInteger("pageSize");
         Page<ApeTestStudent> page = new Page<>(pageNumber,pageSize);
         QueryWrapper<ApeTestStudent> queryWrapper =  new QueryWrapper<>();
-        queryWrapper.lambda().eq(ApeTestStudent::getTestId,testId)
+        queryWrapper.select("user_id, MAX(create_by) as create_by, MAX(update_time) as update_time")
+                .lambda().eq(ApeTestStudent::getTestId,testId)
                 .like(StringUtils.isNotBlank(userName),ApeTestStudent::getCreateBy,userName)
                 .groupBy(ApeTestStudent::getUserId).orderByAsc(ApeTestStudent::getUpdateTime);
         Page<ApeTestStudent> studentPage = apeTestStudentService.page(page, queryWrapper);
