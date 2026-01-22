@@ -61,6 +61,23 @@ public class ApeTaskStudentController {
         return Result.success(apeTaskStudentPage);
     }
 
+
+    /** 分页获取当前老师的学生 */
+    @Log(name = "分页获取当前老师的学生", type = BusinessType.OTHER)
+    @PostMapping("getTeacherStudentPage")
+    public Result getTeacherStudentPage(@RequestBody ApeTaskStudent apeTaskStudent) {
+        ApeUser userInfo = ShiroUtils.getUserInfo();
+        Page<ApeTaskStudent> page = new Page<>(apeTaskStudent.getPageNumber(), apeTaskStudent.getPageSize());
+        QueryWrapper<ApeTaskStudent> queryWrapper = new QueryWrapper<>();
+        queryWrapper.lambda()
+                .eq(ApeTaskStudent::getTeacherId, userInfo.getId())
+                .eq(StringUtils.isNotBlank(apeTaskStudent.getTaskId()), ApeTaskStudent::getTaskId, apeTaskStudent.getTaskId())
+                .like(StringUtils.isNotBlank(apeTaskStudent.getUserName()), ApeTaskStudent::getUserName, apeTaskStudent.getUserName())
+                .eq(apeTaskStudent.getState() != null, ApeTaskStudent::getState, apeTaskStudent.getState());
+        Page<ApeTaskStudent> apeTaskStudentPage = apeTaskStudentService.page(page, queryWrapper);
+        return Result.success(apeTaskStudentPage);
+    }
+
     @PostMapping("getTaskStudentPage")
     public Result getTaskStudentPage(@RequestBody ApeTaskStudent apeTaskStudent) {
         ApeChapter chapter = apeChapterService.getById(apeTaskStudent.getChapterId());
