@@ -77,6 +77,9 @@ public class ApeTaskController {
         return Result.success(apeTaskPage);
     }
 
+
+
+
     /** 根据id获取课程 */
     @Log(name = "根据id获取课程", type = BusinessType.OTHER)
     @GetMapping("getApeTaskById")
@@ -200,4 +203,18 @@ public class ApeTaskController {
         }
     }
 
+    /** 获取热门课程 */
+    @Log(name = "获取热门课程", type = BusinessType.OTHER)
+    @GetMapping("getHotTask")
+    public Result getHotTask() {
+        QueryWrapper<ApeTask> queryWrapper = new QueryWrapper<>();
+        queryWrapper.lambda()
+                .eq(ApeTask::getState, 0)
+                .orderByDesc(ApeTask::getNum)
+                .last("limit 4");
+        List<ApeTask> list = apeTaskService.list(queryWrapper);
+        return Result.success(list);
+    }
+
 }
+
