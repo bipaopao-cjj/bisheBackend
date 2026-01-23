@@ -51,6 +51,11 @@ public class ApeTest implements Serializable {
     private Integer totalScore;
 
     /**
+     * 是否发布成绩：0-未发布 1-已发布
+     */
+    private Integer isRelease;
+
+    /**
      * 考试时长
      */
     private Integer totalTime;

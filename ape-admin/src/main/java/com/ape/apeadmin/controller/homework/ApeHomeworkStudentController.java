@@ -92,7 +92,8 @@ public class ApeHomeworkStudentController {
     public Result getMyApeHomework() {
         ApeUser userInfo = ShiroUtils.getUserInfo();
         QueryWrapper<ApeHomeworkStudent> queryWrapper = new QueryWrapper<>();
-        queryWrapper.lambda().eq(ApeHomeworkStudent::getUserId,userInfo.getId())
+        queryWrapper.select("chapter_id, MAX(id) as id, MAX(chapter_name) as chapter_name, MAX(update_time) as update_time")
+                .lambda().eq(ApeHomeworkStudent::getUserId,userInfo.getId())
                 .groupBy(ApeHomeworkStudent::getChapterId);
         List<ApeHomeworkStudent> studentList = apeHomeworkStudentService.list(queryWrapper);
         for (ApeHomeworkStudent student : studentList) {

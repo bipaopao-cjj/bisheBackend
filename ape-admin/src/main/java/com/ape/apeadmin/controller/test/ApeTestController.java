@@ -131,6 +131,28 @@ public class ApeTestController {
         }
     }
 
+    /**
+     * 修改考试成绩发布状态
+     */
+    @Log(name = "修改成绩发布状态", type = BusinessType.UPDATE)
+    @PostMapping("changeReleaseStatus")
+    public Result changeReleaseStatus(@RequestBody ApeTest apeTest) {
+        if (StringUtils.isBlank(apeTest.getId()) || apeTest.getIsRelease() == null) {
+            return Result.fail("参数错误：ID或状态不能为空");
+        }
+
+        boolean update = apeTestService.lambdaUpdate()
+                .eq(ApeTest::getId, apeTest.getId())
+                .set(ApeTest::getIsRelease, apeTest.getIsRelease())
+                .update();
+
+        if (update) {
+            return Result.success();
+        } else {
+            return Result.fail("状态修改失败");
+        }
+    }
+
     /** 获取用户考试 */
     @GetMapping("getTestListByUser")
     public Result getTestListByUser() {
@@ -158,11 +180,18 @@ public class ApeTestController {
                 test.setScoreTotal(0);
             } else {
                 test.setSchedule("已完成");
-                Integer total = 0;
-                for (ApeTestStudent apeTestStudent : list) {
-                    total += apeTestStudent.getPoint();
+                int isRelease = (test.getIsRelease() == null) ? 0 : test.getIsRelease();
+                if (isRelease == 1) {
+                    Integer total = 0;
+                    for (ApeTestStudent apeTestStudent : list) {
+                        if (apeTestStudent.getPoint() != null) {
+                            total += apeTestStudent.getPoint();
+                        }
+                    }
+                    test.setScoreTotal(total);
+                } else {
+                    test.setScoreTotal(null);
                 }
-                test.setScoreTotal(total);
             }
         }
         return Result.success(apeTestList);
