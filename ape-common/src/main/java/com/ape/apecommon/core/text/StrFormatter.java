@@ -3,10 +3,10 @@ package com.ape.apecommon.core.text;
 import com.ape.apecommon.utils.StringUtils;
 
 /**
- * @author shaozhujie
+ * 
  * @version 1.0
  * @description: 字符串格式化工具
- * @date 2023/8/10 16:21
+ * 
  */
 public class StrFormatter {
 

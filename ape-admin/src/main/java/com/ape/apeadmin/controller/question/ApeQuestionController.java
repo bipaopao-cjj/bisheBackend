@@ -19,10 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @author 超级管理员
+ * 
  * @version 1.0
  * @description: 答疑controller
- * @date 2024/01/18 11:14
+ *
  */
 @Controller
 @ResponseBody

@@ -17,10 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @author 超级管理员
+ * 
  * @version 1.0
  * @description: 论坛controller
- * @date 2024/01/18 08:55
+ *
  */
 @Controller
 @ResponseBody

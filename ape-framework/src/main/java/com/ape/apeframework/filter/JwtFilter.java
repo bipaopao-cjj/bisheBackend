@@ -17,10 +17,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * @author shaozhujie
+ * 
  * @version 1.0
  * @description: jwt过滤器
- * @date 2023/8/11 9:59
+ *
  */
 public class JwtFilter extends BasicHttpAuthenticationFilter {
 
@@ -30,8 +30,8 @@ public class JwtFilter extends BasicHttpAuthenticationFilter {
     	response
     	mappedValue
     * @return:
-    * @author shaozhujie
-    * @date: 2023/9/7 15:02
+    * 
+    * 
     */
     @SneakyThrows
     @Override

@@ -25,10 +25,10 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * @author 超级管理员
+ * 
  * @version 1.0
  * @description: 用户考试题目controller
- * @date 2023/11/24 10:23
+ *
  */
 @Controller
 @ResponseBody

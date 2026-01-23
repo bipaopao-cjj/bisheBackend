@@ -2,8 +2,8 @@ package com.ape.apecommon.enums;
 
 /**
 * @description: 业务操作类型
-* @author shaozhujie
-* @date 2023/9/22 10:25
+*
+* 
 * @version 1.0
 */
 public enum BusinessType

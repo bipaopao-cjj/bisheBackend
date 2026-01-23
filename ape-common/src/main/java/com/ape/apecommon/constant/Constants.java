@@ -3,10 +3,10 @@ package com.ape.apecommon.constant;
 import io.jsonwebtoken.Claims;
 
 /**
- * @author shaozhujie
+ * 
  * @version 1.0
  * @description: 公共字符串
- * @date 2023/8/10 16:24
+ *
  */
 public class Constants {
 

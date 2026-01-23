@@ -10,10 +10,10 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * @author shaozhujie
+ *
  * @version 1.0
  * @description: controller代码生成类
- * @date 2023/10/13 16:46
+ * 
  */
 public class GenControllerCode {
 

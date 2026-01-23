@@ -9,10 +9,10 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * @author shaozhujie
+ * 
  * @version 1.0
  * @description: TODO
- * @date 2023/8/28 11:35
+ * 
  */
 @Controller
 @ResponseBody
@@ -24,8 +24,8 @@ public class CommonController {
     * @param: code
     	msg
     * @return:
-    * @author shaozhujie
-    * @date: 2023/9/14 15:05
+    * 
+    * 
     */
     @GetMapping("/error/{code}/{msg}")
     public Result error (@PathVariable("code")Integer code, @PathVariable("msg") String msg){
@@ -36,8 +36,8 @@ public class CommonController {
      * @description: 上传图片
      * @param: file
      * @return:
-     * @author shaozhujie
-     * @date: 2023/10/13 10:44
+     * 
+     * 
      */
     @PostMapping("uploadImg")
     public Result uploadImg(@RequestParam("file") MultipartFile img) {
@@ -76,8 +76,8 @@ public class CommonController {
      * @description: 上传视频
      * @param: file
      * @return:
-     * @author shaozhujie
-     * @date: 2023/10/13 10:44
+     * 
+     * 
      */
     @PostMapping("uploadVideo")
     public Result uploadVideo(@RequestParam("file") MultipartFile file) {
@@ -113,8 +113,8 @@ public class CommonController {
     * @description: 上传文件
     * @param: file
     * @return:
-    * @author shaozhujie
-    * @date: 2023/10/13 10:44
+    * 
+    * 
     */
     @PostMapping("uploadFile")
     public Result uploadFile(@RequestParam("file") MultipartFile file) {

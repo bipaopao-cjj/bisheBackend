@@ -7,10 +7,10 @@ import com.ape.apesystem.domain.ApeGenTableColumn;
 import java.util.List;
 
 /**
- * @author shaozhujie
+ * 
  * @version 1.0
  * @description: api代码生成类
- * @date 2023/10/14 9:45
+ * 
  */
 public class GenApiCode {
 

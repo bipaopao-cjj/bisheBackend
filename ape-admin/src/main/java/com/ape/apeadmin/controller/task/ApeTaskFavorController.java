@@ -19,10 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @author 超级管理员
+ * 
  * @version 1.0
  * @description: 课程收藏controller
- * @date 2024/01/18 01:51
+ * 
  */
 @Controller
 @ResponseBody

@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @author shaozhujie
+ *
  * @version 1.0
  * @description: 部门service实现类
- * @date 2023/8/28 10:13
+ * 
  */
 @Service
 public class ApeDeptServiceImpl extends ServiceImpl<ApeDeptMapper, ApeDept> implements ApeDeptService {

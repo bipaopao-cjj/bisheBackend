@@ -17,10 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * @author 超级管理员
+ *
  * @version 1.0
  * @description: 章节视频是否观看controller
- * @date 2023/11/23 10:39
+ *
  */
 @Controller
 @ResponseBody
