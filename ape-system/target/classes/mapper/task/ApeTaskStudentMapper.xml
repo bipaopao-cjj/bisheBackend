@@ -4,4 +4,17 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ape.apesystem.mapper.ApeTaskStudentMapper">
 
+    <select id="selectTopTaskChart" resultType="map">
+        SELECT task_id AS taskId,
+               COUNT(DISTINCT user_id) AS num
+        FROM ape_task_student
+        WHERE state = 0
+        <if test="teacherId != null and teacherId != ''">
+            AND teacher_id = #{teacherId}
+        </if>
+        GROUP BY task_id
+        ORDER BY num DESC
+        LIMIT 10
+    </select>
+
 </mapper>

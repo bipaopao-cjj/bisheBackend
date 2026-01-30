@@ -16,8 +16,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
+// import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.redis.core.RedisTemplate;
+import java.util.concurrent.TimeUnit;
+import java.util.Set;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,11 +44,36 @@ public class ApeArticleController {
     private ApeArticleFavorService apeArticleFavorService;
     @Autowired
     private ApeArticleCommentService apeArticleCommentService;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String ARTICLE_PAGE_CACHE_PREFIX = "article:page:";
+
+    private void clearArticleCache() {
+        Set<String> keys = redisTemplate.keys(ARTICLE_PAGE_CACHE_PREFIX + "*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
 
     /** 分页获取笔记 */
     @Log(name = "分页获取笔记", type = BusinessType.OTHER)
     @PostMapping("getApeArticlePage")
     public Result getApeArticlePage(@RequestBody ApeArticle apeArticle) {
+        String cacheKey = ARTICLE_PAGE_CACHE_PREFIX +
+                apeArticle.getPageNumber() + ":" +
+                apeArticle.getPageSize() + ":" +
+                (apeArticle.getUserId() == null ? "" : apeArticle.getUserId()) + ":" +
+                (apeArticle.getTitle() == null ? "" : apeArticle.getTitle()) + ":" +
+                (apeArticle.getState() == null ? "" : apeArticle.getState()) + ":" +
+                (apeArticle.getTaskName() == null ? "" : apeArticle.getTaskName()) + ":" +
+                apeArticle.getType();
+
+        Object cachedData = redisTemplate.opsForValue().get(cacheKey);
+        if (cachedData != null) {
+            return Result.success(cachedData);
+        }
+
         Page<ApeArticle> page = new Page<>(apeArticle.getPageNumber(),apeArticle.getPageSize());
         QueryWrapper<ApeArticle> queryWrapper = new QueryWrapper<>();
         queryWrapper.lambda()
@@ -69,6 +97,7 @@ public class ApeArticleController {
             }
         }
         Page<ApeArticle> apeArticlePage = apeArticleService.page(page, queryWrapper);
+        redisTemplate.opsForValue().set(cacheKey, apeArticlePage, 30, TimeUnit.MINUTES);
         return Result.success(apeArticlePage);
     }
 
@@ -110,6 +139,7 @@ public class ApeArticleController {
         }
         boolean save = apeArticleService.save(apeArticle);
         if (save) {
+            clearArticleCache();
             return Result.success();
         } else {
             return Result.fail(ResultCode.COMMON_DATA_OPTION_ERROR.getMessage());
@@ -128,6 +158,7 @@ public class ApeArticleController {
         }
         boolean save = apeArticleService.updateById(apeArticle);
         if (save) {
+            clearArticleCache();
             return Result.success();
         } else {
             return Result.fail(ResultCode.COMMON_DATA_OPTION_ERROR.getMessage());
@@ -149,6 +180,7 @@ public class ApeArticleController {
                 queryWrapper2.lambda().eq(ApeArticleFavor::getArticleId,id);
                 apeArticleFavorService.remove(queryWrapper2);
             }
+            clearArticleCache();
             return Result.success();
         } else {
             return Result.fail("笔记id不能为空！");

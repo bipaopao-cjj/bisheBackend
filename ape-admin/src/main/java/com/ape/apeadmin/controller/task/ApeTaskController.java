@@ -9,14 +9,18 @@ import com.ape.apesystem.domain.*;
 import com.ape.apesystem.service.*;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.checkerframework.checker.units.qual.A;
+// import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 
@@ -24,6 +28,7 @@ import java.util.List;
  * @description: 课程controller
  *
  */
+@Slf4j
 @Controller
 @ResponseBody
 @RequestMapping("task")
@@ -55,6 +60,17 @@ public class ApeTaskController {
     private ApeHomeworkService apeHomeworkService;
     @Autowired
     private ApeHomeworkStudentService apeHomeworkStudentService;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String TASK_PAGE_CACHE_PREFIX = "task:page:";
+
+    private void clearTaskCache() {
+        Set<String> keys = redisTemplate.keys(TASK_PAGE_CACHE_PREFIX + "*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
 
     /** 分页获取课程 */
     @Log(name = "分页获取课程", type = BusinessType.OTHER)
@@ -63,6 +79,21 @@ public class ApeTaskController {
         if (apeTask.getType() == 1) {
             apeTask.setTeacherId(ShiroUtils.getUserInfo().getId());
         }
+
+        String cacheKey = TASK_PAGE_CACHE_PREFIX +
+                apeTask.getPageNumber() + ":" +
+                apeTask.getPageSize() + ":" +
+                (apeTask.getName() == null ? "" : apeTask.getName()) + ":" +
+                (apeTask.getTeacherId() == null ? "" : apeTask.getTeacherId()) + ":" +
+                (apeTask.getState() == null ? "" : apeTask.getState()) + ":" +
+                (apeTask.getClassification() == null ? "" : apeTask.getClassification());
+
+        Object cachedData = redisTemplate.opsForValue().get(cacheKey);
+        if (cachedData != null) {
+            log.info("使用redis查询: {}", cacheKey);
+            return Result.success(cachedData);
+        }
+
         Page<ApeTask> page = new Page<>(apeTask.getPageNumber(),apeTask.getPageSize());
         QueryWrapper<ApeTask> queryWrapper = new QueryWrapper<>();
         queryWrapper.lambda()
@@ -74,6 +105,8 @@ public class ApeTaskController {
                 .like(StringUtils.isNotBlank(apeTask.getMajor()),ApeTask::getMajor,apeTask.getMajor())
                 .like(StringUtils.isNotBlank(apeTask.getClassification()),ApeTask::getClassification,apeTask.getClassification());
         Page<ApeTask> apeTaskPage = apeTaskService.page(page, queryWrapper);
+
+        redisTemplate.opsForValue().set(cacheKey, apeTaskPage, 30, TimeUnit.MINUTES);
         return Result.success(apeTaskPage);
     }
 
@@ -123,6 +156,7 @@ public class ApeTaskController {
         apeTask.setTeacherName(apeUser.getUserName());
         boolean save = apeTaskService.save(apeTask);
         if (save) {
+            clearTaskCache();
             return Result.success();
         } else {
             return Result.fail(ResultCode.COMMON_DATA_OPTION_ERROR.getMessage());
@@ -132,13 +166,26 @@ public class ApeTaskController {
     /** 编辑课程 */
     @Log(name = "编辑课程", type = BusinessType.UPDATE)
     @PostMapping("editApeTask")
+    @Transactional(rollbackFor = Exception.class)
     public Result editApeTask(@RequestBody ApeTask apeTask) {
         if (StringUtils.isNotBlank(apeTask.getTeacherId())) {
             ApeUser apeUser = apeUserService.getById(apeTask.getTeacherId());
             apeTask.setTeacherName(apeUser.getUserName());
+
+            // Update teacher info in ape_task_student if teacher changed
+            ApeTask oldTask = apeTaskService.getById(apeTask.getId());
+            if (oldTask != null && !apeTask.getTeacherId().equals(oldTask.getTeacherId())) {
+                com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<ApeTaskStudent> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+                updateWrapper.lambda()
+                        .eq(ApeTaskStudent::getTaskId, apeTask.getId())
+                        .set(ApeTaskStudent::getTeacherId, apeTask.getTeacherId())
+                        .set(ApeTaskStudent::getTeacherName, apeUser.getUserName());
+                apeTaskStudentService.update(updateWrapper);
+            }
         }
         boolean save = apeTaskService.updateById(apeTask);
         if (save) {
+            clearTaskCache();
             return Result.success();
         } else {
             return Result.fail(ResultCode.COMMON_DATA_OPTION_ERROR.getMessage());
@@ -197,6 +244,7 @@ public class ApeTaskController {
                     apeTestStudentService.remove(queryWrapper6);
                 }
             }
+            clearTaskCache();
             return Result.success();
         } else {
             return Result.fail("课程id不能为空！");
@@ -217,4 +265,3 @@ public class ApeTaskController {
     }
 
 }
-

@@ -11,20 +11,24 @@ import com.ape.apesystem.domain.ApeChapter;
 import com.ape.apesystem.domain.ApeHomework;
 import com.ape.apesystem.domain.ApeHomeworkStudent;
 import com.ape.apesystem.domain.ApeUser;
+import com.ape.apesystem.domain.ApeTaskStudent;
 import com.ape.apesystem.service.ApeChapterService;
 import com.ape.apesystem.service.ApeHomeworkService;
 import com.ape.apesystem.service.ApeHomeworkStudentService;
+import com.ape.apesystem.service.ApeTaskStudentService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
+// import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +48,8 @@ public class ApeHomeworkStudentController {
     private ApeHomeworkService apeHomeworkService;
     @Autowired
     private ApeChapterService apeChapterService;
+    @Autowired
+    private ApeTaskStudentService apeTaskStudentService;
 
     /** 分页获取学生作业 */
     @Log(name = "分页获取学生作业", type = BusinessType.OTHER)
@@ -101,6 +107,73 @@ public class ApeHomeworkStudentController {
             student.setTaskName(chapter.getTaskName());
         }
         return Result.success(studentList);
+    }
+
+    @GetMapping("getAllUserHomework")
+    public Result getAllUserHomework() {
+        ApeUser userInfo = ShiroUtils.getUserInfo();
+        // 1. 获取用户加入的课程 (Tasks)
+        QueryWrapper<ApeTaskStudent> taskStudentQueryWrapper = new QueryWrapper<>();
+        taskStudentQueryWrapper.lambda().eq(ApeTaskStudent::getUserId, userInfo.getId())
+                .eq(ApeTaskStudent::getState, 0); // 0 表示已加入/通过
+        List<ApeTaskStudent> taskStudentList = apeTaskStudentService.list(taskStudentQueryWrapper);
+
+        if (taskStudentList.isEmpty()) {
+            return Result.success(new ArrayList<>());
+        }
+
+        Set<String> taskIds = taskStudentList.stream().map(ApeTaskStudent::getTaskId).collect(Collectors.toSet());
+
+        // 2. 获取这些课程下的所有章节 (Chapters)
+        QueryWrapper<ApeChapter> chapterQueryWrapper = new QueryWrapper<>();
+        chapterQueryWrapper.lambda().in(ApeChapter::getTaskId, taskIds);
+        List<ApeChapter> chapterList = apeChapterService.list(chapterQueryWrapper);
+
+        if (chapterList.isEmpty()) {
+            return Result.success(new ArrayList<>());
+        }
+
+        Set<String> chapterIds = chapterList.stream().map(ApeChapter::getId).collect(Collectors.toSet());
+
+        // 3. 找出哪些章节布置了作业 (Homework)
+        QueryWrapper<ApeHomework> homeworkQuery = new QueryWrapper<>();
+        homeworkQuery.select("distinct chapter_id").lambda().in(ApeHomework::getChapterId, chapterIds);
+        List<ApeHomework> homeworkList = apeHomeworkService.list(homeworkQuery);
+
+        Set<String> chaptersWithHomeworkIds = homeworkList.stream().map(ApeHomework::getChapterId).collect(Collectors.toSet());
+
+        // 4. 构建结果列表
+        // 先查出学生在这个范围内已有的作业记录，以便合并信息
+        QueryWrapper<ApeHomeworkStudent> studentHwQuery = new QueryWrapper<>();
+        studentHwQuery.select("chapter_id, MAX(id) as id, MAX(update_time) as update_time")
+                .lambda()
+                .eq(ApeHomeworkStudent::getUserId, userInfo.getId())
+                .in(ApeHomeworkStudent::getChapterId, chaptersWithHomeworkIds)
+                .groupBy(ApeHomeworkStudent::getChapterId);
+
+        List<ApeHomeworkStudent> existingStatusList = apeHomeworkStudentService.list(studentHwQuery);
+        Map<String, ApeHomeworkStudent> statusMap = existingStatusList.stream()
+                .collect(Collectors.toMap(ApeHomeworkStudent::getChapterId, bean -> bean));
+
+        List<ApeHomeworkStudent> finalResult = new ArrayList<>();
+
+        for (ApeChapter chapter : chapterList) {
+            if (chaptersWithHomeworkIds.contains(chapter.getId())) {
+                ApeHomeworkStudent dto = new ApeHomeworkStudent();
+                dto.setChapterId(chapter.getId());
+                dto.setChapterName(chapter.getName());
+                dto.setTaskName(chapter.getTaskName());
+
+                if (statusMap.containsKey(chapter.getId())) {
+                    ApeHomeworkStudent status = statusMap.get(chapter.getId());
+                    dto.setId(status.getId());
+                    dto.setUpdateTime(status.getUpdateTime());
+                }
+                finalResult.add(dto);
+            }
+        }
+
+        return Result.success(finalResult);
     }
 
     @PostMapping("getApeHomeworkStudentList")
@@ -209,3 +282,5 @@ public class ApeHomeworkStudentController {
     }
 
 }
+
+

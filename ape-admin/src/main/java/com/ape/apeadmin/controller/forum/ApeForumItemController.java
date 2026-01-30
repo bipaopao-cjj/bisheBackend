@@ -14,8 +14,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
+// import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.redis.core.RedisTemplate;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import java.util.List;
 
@@ -32,11 +35,35 @@ public class ApeForumItemController {
 
     @Autowired
     private ApeForumItemService apeForumItemService;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String FORUM_ITEM_PAGE_CACHE_PREFIX = "forum:item:page:";
+
+    private void clearForumCache() {
+        Set<String> keys = redisTemplate.keys(FORUM_ITEM_PAGE_CACHE_PREFIX + "*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
 
     /** 分页获取论坛讨论 */
     @Log(name = "分页获取论坛讨论", type = BusinessType.OTHER)
     @PostMapping("getApeForumItemPage")
     public Result getApeForumItemPage(@RequestBody ApeForumItem apeForumItem) {
+        String cacheKey = FORUM_ITEM_PAGE_CACHE_PREFIX +
+                apeForumItem.getPageNumber() + ":" +
+                apeForumItem.getPageSize() + ":" +
+                (apeForumItem.getForumId() == null ? "" : apeForumItem.getForumId()) + ":" +
+                (apeForumItem.getUserName() == null ? "" : apeForumItem.getUserName()) + ":" +
+                (apeForumItem.getCreateBy() == null ? "" : apeForumItem.getCreateBy()) + ":" +
+                (apeForumItem.getCreateTime() == null ? "" : apeForumItem.getCreateTime());
+
+        Object cachedData = redisTemplate.opsForValue().get(cacheKey);
+        if (cachedData != null) {
+             return Result.success(cachedData);
+        }
+
         Page<ApeForumItem> page = new Page<>(apeForumItem.getPageNumber(),apeForumItem.getPageSize());
         QueryWrapper<ApeForumItem> queryWrapper = new QueryWrapper<>();
         queryWrapper.lambda()
@@ -46,6 +73,8 @@ public class ApeForumItemController {
                 .eq(apeForumItem.getCreateTime() != null,ApeForumItem::getCreateTime,apeForumItem.getCreateTime())
                 .orderByDesc(ApeForumItem::getCreateTime);
         Page<ApeForumItem> apeForumItemPage = apeForumItemService.page(page, queryWrapper);
+
+        redisTemplate.opsForValue().set(cacheKey, apeForumItemPage, 30, TimeUnit.MINUTES);
         return Result.success(apeForumItemPage);
     }
 
@@ -80,6 +109,7 @@ public class ApeForumItemController {
         apeForumItem.setUserName(userInfo.getUserName());
         boolean save = apeForumItemService.save(apeForumItem);
         if (save) {
+            clearForumCache();
             return Result.success();
         } else {
             return Result.fail(ResultCode.COMMON_DATA_OPTION_ERROR.getMessage());
@@ -92,6 +122,7 @@ public class ApeForumItemController {
     public Result editApeForumItem(@RequestBody ApeForumItem apeForumItem) {
         boolean save = apeForumItemService.updateById(apeForumItem);
         if (save) {
+            clearForumCache();
             return Result.success();
         } else {
             return Result.fail(ResultCode.COMMON_DATA_OPTION_ERROR.getMessage());
@@ -107,6 +138,7 @@ public class ApeForumItemController {
             for (String id : asList) {
                 apeForumItemService.removeById(id);
             }
+            clearForumCache();
             return Result.success();
         } else {
             return Result.fail("论坛讨论id不能为空！");

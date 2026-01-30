@@ -6,6 +6,9 @@ import com.ape.apesystem.service.ApeTaskStudentService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 
  * @version 1.0
@@ -14,4 +17,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class ApeTaskStudentServiceImpl extends ServiceImpl<ApeTaskStudentMapper, ApeTaskStudent> implements ApeTaskStudentService {
+    @Override
+    public List<Map<String, Object>> selectTopTaskChart(String teacherId) {
+        return baseMapper.selectTopTaskChart(teacherId);
+    }
 }

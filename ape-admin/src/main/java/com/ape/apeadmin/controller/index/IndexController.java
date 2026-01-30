@@ -86,7 +86,8 @@ public class IndexController {
             //学生数量
             QueryWrapper<ApeTaskStudent> wrapper = new QueryWrapper<>();
             wrapper.lambda().eq(ApeTaskStudent::getTeacherId,userInfo.getId())
-                    .eq(ApeTaskStudent::getState,0).groupBy(ApeTaskStudent::getUserId);
+                    .eq(ApeTaskStudent::getState,0);
+            wrapper.select("DISTINCT user_id");
             List<ApeTaskStudent> taskStudentList = apeTaskStudentService.list(wrapper);
             jsonObject.put("studentNum",taskStudentList.size());
         }
@@ -111,17 +112,27 @@ public class IndexController {
         } else {
             QueryWrapper<ApeTaskStudent> wrapper = new QueryWrapper<>();
             wrapper.lambda().eq(ApeTaskStudent::getTeacherId,userInfo.getId())
-                    .eq(ApeTaskStudent::getState,0).groupBy(ApeTaskStudent::getUserId);
+                    .eq(ApeTaskStudent::getState,0);
+            wrapper.select("DISTINCT user_id");
             List<ApeTaskStudent> taskStudentList = apeTaskStudentService.list(wrapper);
-            for (ApeTaskStudent apeTaskStudent : taskStudentList) {
-                ApeUser user = apeUserService.getById(apeTaskStudent.getUserId());
-                if (user.getSex() == 0) {
-                    nan += 1;
-                } else {
-                    nv += 1;
+            List<String> userIds = new ArrayList<>();
+            for (ApeTaskStudent taskStudent : taskStudentList) {
+                if (taskStudent != null && taskStudent.getUserId() != null) {
+                    userIds.add(taskStudent.getUserId());
                 }
             }
-
+            if (!userIds.isEmpty()) {
+                List<ApeUser> userList = apeUserService.listByIds(userIds);
+                for (ApeUser user : userList) {
+                    if (user != null && user.getSex() != null) {
+                        if (user.getSex() == 0) {
+                            nan += 1;
+                        } else {
+                            nv += 1;
+                        }
+                    }
+                }
+            }
         }
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("value",nan);
@@ -139,31 +150,42 @@ public class IndexController {
         ApeUser userInfo = ShiroUtils.getUserInfo();
         List<String> tasks = new ArrayList<>();
         List<Integer> nums =  new ArrayList<>();
-        if (type == 0) {
-            QueryWrapper<ApeTask> queryWrapper = new QueryWrapper<>();
-            queryWrapper.lambda().orderByAsc(ApeTask::getCreateTime).last("limit 10");
-            List<ApeTask> taskList = apeTaskService.list(queryWrapper);
-            for (ApeTask task : taskList) {
-                tasks.add(task.getName());
-                QueryWrapper<ApeTaskStudent> wrapper = new QueryWrapper<>();
-                wrapper.lambda().eq(ApeTaskStudent::getTaskId,task.getId())
-                        .eq(ApeTaskStudent::getState,0).groupBy(ApeTaskStudent::getUserId);
-                List<ApeTaskStudent> list = apeTaskStudentService.list(wrapper);
-                nums.add(list.size());
-            }
-        } else {
-            QueryWrapper<ApeTask> queryWrapper = new QueryWrapper<>();
-            queryWrapper.lambda().orderByAsc(ApeTask::getCreateTime).eq(ApeTask::getTeacherId,userInfo.getId()).last("limit 10");
-            List<ApeTask> taskList = apeTaskService.list(queryWrapper);
-            for (ApeTask task : taskList) {
-                tasks.add(task.getName());
-                QueryWrapper<ApeTaskStudent> wrapper = new QueryWrapper<>();
-                wrapper.lambda().eq(ApeTaskStudent::getTaskId,task.getId())
-                        .eq(ApeTaskStudent::getState,0).groupBy(ApeTaskStudent::getUserId);
-                List<ApeTaskStudent> list = apeTaskStudentService.list(wrapper);
-                nums.add(list.size());
+
+        String teacherId = type == 0 ? null : userInfo.getId();
+        List<java.util.Map<String, Object>> statList = apeTaskStudentService.selectTopTaskChart(teacherId);
+
+        List<String> taskIds = new ArrayList<>();
+        for (java.util.Map<String, Object> row : statList) {
+            Object taskIdObj = row.get("taskId");
+            if (taskIdObj != null) {
+                taskIds.add(taskIdObj.toString());
             }
         }
+
+        java.util.Map<String, ApeTask> taskMap = new java.util.HashMap<>();
+        if (!taskIds.isEmpty()) {
+            List<ApeTask> taskList = apeTaskService.listByIds(taskIds);
+            for (ApeTask task : taskList) {
+                taskMap.put(task.getId(), task);
+            }
+        }
+
+        for (java.util.Map<String, Object> row : statList) {
+            Object taskIdObj = row.get("taskId");
+            if (taskIdObj == null) {
+                continue;
+            }
+            ApeTask task = taskMap.get(taskIdObj.toString());
+            if (task != null) {
+                tasks.add(task.getName());
+                Object numObj = row.get("num");
+                int num = numObj instanceof Number
+                        ? ((Number) numObj).intValue()
+                        : Integer.parseInt(numObj.toString());
+                nums.add(num);
+            }
+        }
+
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("tasks",tasks);
         jsonObject.put("nums",nums);

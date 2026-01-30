@@ -16,6 +16,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * 
  * @version 1.0
@@ -57,13 +59,9 @@ public class ApeHomeworkController {
     @GetMapping("getApeHomeworkByChapterId")
     public Result getApeHomeworkByChapterId(@RequestParam("id")String id) {
         QueryWrapper<ApeHomework> queryWrapper = new QueryWrapper<>();
-        queryWrapper.lambda().eq(ApeHomework::getChapterId,id);
-        int count = apeHomeworkService.count(queryWrapper);
-        if (count > 0) {
-            return Result.success();
-        } else {
-            return Result.fail();
-        }
+        queryWrapper.lambda().eq(ApeHomework::getChapterId,id).orderByAsc(ApeHomework::getSort);
+        List<ApeHomework> list = apeHomeworkService.list(queryWrapper);
+        return Result.success(list);
     }
 
     /** 保存作业 */

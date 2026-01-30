@@ -9,12 +9,16 @@ import com.ape.apesystem.domain.*;
 import com.ape.apesystem.service.*;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
+// import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.redis.core.RedisTemplate;
+import java.util.concurrent.TimeUnit;
+import java.util.Set;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +29,7 @@ import java.util.List;
  * @description: 章节controller
  *
  */
+@Slf4j
 @Controller
 @ResponseBody
 @RequestMapping("chapter")
@@ -40,6 +45,17 @@ public class ApeChapterController {
     private ApeChapterVideoService apeChapterVideoService;
     @Autowired
     private ApeHomeworkStudentService apeHomeworkStudentService;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final String CHAPTER_TASK_CACHE_PREFIX = "chapter:task:";
+
+    private void clearChapterCache() {
+        Set<String> keys = redisTemplate.keys(CHAPTER_TASK_CACHE_PREFIX + "*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
 
     /** 分页获取章节 */
     @Log(name = "分页获取章节", type = BusinessType.OTHER)
@@ -75,6 +91,13 @@ public class ApeChapterController {
 
     @GetMapping("getApeChapterByTaskId")
     public Result getApeChapterByTaskId(@RequestParam("id")String id) {
+        String cacheKey = CHAPTER_TASK_CACHE_PREFIX + id;
+        Object cachedData = redisTemplate.opsForValue().get(cacheKey);
+        if (cachedData != null) {
+            log.info("从缓存中获取章节数据，缓存键：" + cacheKey);
+            return Result.success(cachedData);
+        }
+
         QueryWrapper<ApeChapter> queryWrapper = new QueryWrapper<>();
         queryWrapper.lambda().eq(ApeChapter::getTaskId,id);
         List<ApeChapter> chapterList = apeChapterService.list(queryWrapper);
@@ -88,6 +111,7 @@ public class ApeChapterController {
                 apeChapter.setHomework(0);
             }
         }
+        redisTemplate.opsForValue().set(cacheKey, chapterList, 30, TimeUnit.MINUTES);
         return Result.success(chapterList);
     }
 
@@ -109,6 +133,7 @@ public class ApeChapterController {
         }
         boolean save = apeChapterService.save(apeChapter);
         if (save) {
+            clearChapterCache();
             return Result.success();
         } else {
             return Result.fail(ResultCode.COMMON_DATA_OPTION_ERROR.getMessage());
@@ -125,6 +150,7 @@ public class ApeChapterController {
         }
         boolean save = apeChapterService.updateById(apeChapter);
         if (save) {
+            clearChapterCache();
             return Result.success();
         } else {
             return Result.fail(ResultCode.COMMON_DATA_OPTION_ERROR.getMessage());
@@ -149,6 +175,7 @@ public class ApeChapterController {
                 queryWrapper2.lambda().eq(ApeHomeworkStudent::getChapterId,id);
                 apeHomeworkStudentService.remove(queryWrapper2);
             }
+            clearChapterCache();
             return Result.success();
         } else {
             return Result.fail("章节id不能为空！");

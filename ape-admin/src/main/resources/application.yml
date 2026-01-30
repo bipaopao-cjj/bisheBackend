@@ -49,5 +49,11 @@ mybatis-plus:
 logging:
   file:
     path: ./logs
-  config: classpath:logback-spring.xml
 
+# 阿里云 OSS 配置
+aliyun:
+  oss:
+    endpoint: your-endpoint # 例如：oss-cn-hangzhou.aliyuncs.com
+    accessKeyId: your-access-key-id
+    accessKeySecret: your-access-key-secret
+    bucketName: your-bucket-name
